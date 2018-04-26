@@ -1,0 +1,69 @@
+/**
+ * Keep the server in it's own file.
+ * Eventually, we will add a socket server for the chat app
+ */
+
+// main deps
+const http = require('http');
+const https = require('https');
+const spdy = require('spdy'); // eslint-ignore
+const { readFileSync } = require('fs');
+const socket = require('../src/server/socket');
+
+require('local-env-var');
+
+// load our server stuff
+const app = require('../app');
+const { logger } = require('../src/server/logger');
+
+// default to a given port
+let port = parseInt(process.env.PORT, 10) || 5000;
+
+// set express var here as we need to attach to http server
+app.set('port', port);
+
+// create server object for socket + express
+let server = http.createServer(app);
+if (process.env.ENABLE_HTTPS === 'true') {
+  logger('debug', 'bin/www', 'creating HTTPS server');
+  const options = {
+    key: readFileSync('server-key.pem'),
+    cert: readFileSync('server-cert.pem'),
+  };
+  server = https.createServer(options, app);
+}
+
+if (process.env.ENABLE_HTTP2 === 'true') {
+  logger('debug', 'bin/www', 'creating HTTP2 server');
+  const options = {
+    key: readFileSync('server-key.pem'),
+    cert: readFileSync('server-cert.pem'),
+    allowHTTP1: true,
+  };
+  server = spdy.createServer(options, app);
+}
+
+// start a http server
+server.listen(port);
+
+// bind a websocket, if we desire
+if (process.env.ENABLE_SOCKET === 'true') {
+  logger('debug', 'bin/www', 'binding websocket');
+  socket.bind(server);
+}
+
+// inform us of the running server
+server.on("listening", () => logger('info', 'bin/www', `Server running on port //localhost:${port}`));
+
+// handle ports the lazy way
+server.on('error', ({ code }) => {
+  if (code === 'EADDRINUSE') {
+    port++;
+    logger('error', 'bin/www', `ERROR, PORT IN USE. USING ${port}`);
+    server.listen(port);
+  } else {
+    throw new Error(code);
+    process.exit(1);
+  }
+});
+

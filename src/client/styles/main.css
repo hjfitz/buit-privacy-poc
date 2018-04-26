@@ -1,0 +1,23 @@
+html, body {
+  min-height: 100vh;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  font-family: sans-serif;
+}
+
+a {
+  text-decoration: none;
+  transition: 0.3s color ease;
+  color: #00bcd4;
+}
+
+a:hover {
+  color: #4dd0e1;
+}
+
+.pointer {
+  cursor: pointer
+}
